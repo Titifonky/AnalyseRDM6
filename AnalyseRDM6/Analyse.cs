@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using NPOI;
 
 namespace AnalyseRDM6
 {
@@ -35,10 +36,27 @@ namespace AnalyseRDM6
                 FichierOX.Analyser();
             }
 
-            // Create a file to write to.
-            using (StreamWriter sw = File.CreateText(Path.Combine(dossier, "Analyse.csv")))
+            ExportBarreMax(dossier);
+            ExportBarre(dossier);
+            ExportDeplacement(dossier);
+            ExportReaction(dossier);
+        }
+
+        private void ExportBarreMax(String dossier)
+        {
+            // Creer le fichier CSV
+            using (StreamWriter sw = File.CreateText(Path.Combine(dossier, "AnalyseBarreMax.csv")))
             {
                 sw.WriteLine("No;Origine;Extremite;Section;Lg;NcMax;NcMax comb;NtMax;NtMax comb;TyMax;TyMax comb;TzMax;TzMax comb;MFyMax;MFyMax comb;MFzMax;MFzMax comb;MtMax;MtMax comb");
+
+                Func<double, string, string> format = delegate (double val, string comb)
+                {
+                    val = Math.Round(val, Precision);
+                    if (val != 0)
+                        return val.ToString() + ";" + comb;
+
+                    return ";";
+                };
 
                 foreach (var Poutre in Data.ListePoutres.Values)
                 {
@@ -62,7 +80,7 @@ namespace AnalyseRDM6
                     {
                         var Efforts = Comb.ListeEffortsPoutre[Poutre.No];
 
-                        if(Efforts.EffortsMax.Nc < NcMax)
+                        if (Efforts.EffortsMax.Nc < NcMax)
                         {
                             NcMax = Efforts.EffortsMax.Nc;
                             NcCombinaisonMax = Comb.Nom;
@@ -115,38 +133,206 @@ namespace AnalyseRDM6
 
 
                     // Compression pure
-                    L.Add(ValToString(NcMax, NcCombinaisonMax));
+                    L.Add(format(NcMax, NcCombinaisonMax));
 
                     // Traction pure
-                    L.Add(ValToString(NtMax, NtCombinaisonMax));
+                    L.Add(format(NtMax, NtCombinaisonMax));
 
                     // Tranchant Y
-                    L.Add(ValToString(TyMax, TyCombinaisonMax));
+                    L.Add(format(TyMax, TyCombinaisonMax));
 
                     // Tranchant Z
-                    L.Add(ValToString(TzMax, TzCombinaisonMax));
+                    L.Add(format(TzMax, TzCombinaisonMax));
 
                     // Moment flechissant Y
-                    L.Add(ValToString(MFyMax, MFyCombinaisonMax));
+                    L.Add(format(MFyMax, MFyCombinaisonMax));
 
                     // Moment flechissant Z
-                    L.Add(ValToString(MFzMax, MFzCombinaisonMax));
+                    L.Add(format(MFzMax, MFzCombinaisonMax));
 
                     // Moment de torsion
-                    L.Add(ValToString(MtMax, MtCombinaisonMax));
+                    L.Add(format(MtMax, MtCombinaisonMax));
 
                     sw.WriteLine(String.Join(";", L));
                 }
             }
         }
 
-        private String ValToString(double val, String Comb)
+        private void ExportBarre(String dossier)
+        {
+            // Creer le fichier CSV
+            using (StreamWriter sw = File.CreateText(Path.Combine(dossier, "AnalyseBarre.csv")))
+            {
+                sw.WriteLine("No;Section;Lg;Noeud O;oN;oTy;oTz;oMFt;oMFz;oMt;Noeud E;eN;eTy;eTz;eMFt;eMFz;eMt;Comb");
+
+                foreach (var Comb in Data.ListeCasDeCharge.Values)
+                {
+                    foreach (var Poutre in Comb.ListeEffortsPoutre.Values)
+                    {
+                        var L = new List<String>();
+                        L.Add(Poutre.Poutre.ToString());
+
+                        var p = Data.ListePoutres[Poutre.Poutre];
+                        L.Add(Data.ListeSections[p.Section].Nom);
+                        L.Add(Math.Round(p.Longueur, 3).ToString());
+
+                        L.Add(ValToString(Poutre.EffortsNorigine.Noeud));
+                        L.Add(ValToString(Poutre.EffortsNorigine.N));
+                        L.Add(ValToString(Poutre.EffortsNorigine.TY));
+                        L.Add(ValToString(Poutre.EffortsNorigine.TZ));
+                        L.Add(ValToString(Poutre.EffortsNorigine.MFY));
+                        L.Add(ValToString(Poutre.EffortsNorigine.MFZ));
+                        L.Add(ValToString(Poutre.EffortsNorigine.MT));
+
+                        L.Add(ValToString(Poutre.EffortsNextremite.Noeud));
+                        L.Add(ValToString(Poutre.EffortsNextremite.N));
+                        L.Add(ValToString(Poutre.EffortsNextremite.TY));
+                        L.Add(ValToString(Poutre.EffortsNextremite.TZ));
+                        L.Add(ValToString(Poutre.EffortsNextremite.MFY));
+                        L.Add(ValToString(Poutre.EffortsNextremite.MFZ));
+                        L.Add(ValToString(Poutre.EffortsNextremite.MT));
+
+                        L.Add(Comb.Nom);
+                        sw.WriteLine(String.Join(";", L));
+                    }
+                }
+
+                foreach (var Comb in Data.ListeCombinaisons.Values)
+                {
+                    foreach (var Poutre in Comb.ListeEffortsPoutre.Values)
+                    {
+                        var L = new List<String>();
+                        L.Add(Poutre.Poutre.ToString());
+
+                        var p = Data.ListePoutres[Poutre.Poutre];
+                        L.Add(Data.ListeSections[p.Section].Nom);
+                        L.Add(Math.Round(p.Longueur, 3).ToString());
+
+                        L.Add(ValToString(Poutre.EffortsNorigine.Noeud));
+                        L.Add(ValToString(Poutre.EffortsNorigine.N));
+                        L.Add(ValToString(Poutre.EffortsNorigine.TY));
+                        L.Add(ValToString(Poutre.EffortsNorigine.TZ));
+                        L.Add(ValToString(Poutre.EffortsNorigine.MFY));
+                        L.Add(ValToString(Poutre.EffortsNorigine.MFZ));
+                        L.Add(ValToString(Poutre.EffortsNorigine.MT));
+
+                        L.Add(ValToString(Poutre.EffortsNextremite.Noeud));
+                        L.Add(ValToString(Poutre.EffortsNextremite.N));
+                        L.Add(ValToString(Poutre.EffortsNextremite.TY));
+                        L.Add(ValToString(Poutre.EffortsNextremite.TZ));
+                        L.Add(ValToString(Poutre.EffortsNextremite.MFY));
+                        L.Add(ValToString(Poutre.EffortsNextremite.MFZ));
+                        L.Add(ValToString(Poutre.EffortsNextremite.MT));
+
+                        L.Add(Comb.Nom);
+                        sw.WriteLine(String.Join(";", L));
+                    }
+                }
+            }
+        }
+
+        private void ExportDeplacement(String dossier)
+        {
+            // Creer le fichier CSV
+            using (StreamWriter sw = File.CreateText(Path.Combine(dossier, "AnalyseDeplacement.csv")))
+            {
+                sw.WriteLine("No;Dx;Dy;Dz;Rx;Ry;Rz;Comb");
+
+                foreach (var Comb in Data.ListeCasDeCharge.Values)
+                {
+                    foreach (var Noeud in Comb.ListeDeplacementNoeud.Values)
+                    {
+                        var L = new List<String>();
+                        L.Add(Noeud.Noeud.ToString());
+                        L.Add(ValToString(Noeud.DX, 4));
+                        L.Add(ValToString(Noeud.DY, 4));
+                        L.Add(ValToString(Noeud.DZ, 4));
+                        L.Add(ValToString(Noeud.RX, 4));
+                        L.Add(ValToString(Noeud.RY, 4));
+                        L.Add(ValToString(Noeud.RZ, 4));
+                        L.Add(Comb.Nom);
+                        sw.WriteLine(String.Join(";", L));
+                    }
+                }
+
+                foreach (var Comb in Data.ListeCombinaisons.Values)
+                {
+                    foreach (var Noeud in Comb.ListeDeplacementNoeud.Values)
+                    {
+                        var L = new List<String>();
+                        L.Add(Noeud.Noeud.ToString());
+                        L.Add(ValToString(Noeud.DX, 4));
+                        L.Add(ValToString(Noeud.DY, 4));
+                        L.Add(ValToString(Noeud.DZ, 4));
+                        L.Add(ValToString(Noeud.RX, 4));
+                        L.Add(ValToString(Noeud.RY, 4));
+                        L.Add(ValToString(Noeud.RZ, 4));
+                        L.Add(Comb.Nom);
+                        sw.WriteLine(String.Join(";", L));
+                    }
+                }
+            }
+        }
+
+        private void ExportReaction(String dossier)
+        {
+            // Creer le fichier CSV
+            using (StreamWriter sw = File.CreateText(Path.Combine(dossier, "AnalyseReaction.csv")))
+            {
+                sw.WriteLine("No;Fx;Fy;Fz;Mx;My;Mz;Comb");
+
+                foreach (var Comb in Data.ListeCasDeCharge.Values)
+                {
+                    foreach (var Noeud in Comb.ListeReactionNoeud.Values)
+                    {
+                        var L = new List<String>();
+                        L.Add(Noeud.Noeud.ToString());
+                        L.Add(ValToString(Noeud.FX));
+                        L.Add(ValToString(Noeud.FY));
+                        L.Add(ValToString(Noeud.FZ));
+                        L.Add(ValToString(Noeud.MX));
+                        L.Add(ValToString(Noeud.MY));
+                        L.Add(ValToString(Noeud.MZ));
+                        L.Add(Comb.Nom);
+                        sw.WriteLine(String.Join(";", L));
+                    }
+                }
+
+                foreach (var Comb in Data.ListeCombinaisons.Values)
+                {
+                    foreach (var Noeud in Comb.ListeReactionNoeud.Values)
+                    {
+                        var L = new List<String>();
+                        L.Add(Noeud.Noeud.ToString());
+                        L.Add(ValToString(Noeud.FX));
+                        L.Add(ValToString(Noeud.FY));
+                        L.Add(ValToString(Noeud.FZ));
+                        L.Add(ValToString(Noeud.MX));
+                        L.Add(ValToString(Noeud.MY));
+                        L.Add(ValToString(Noeud.MZ));
+                        L.Add(Comb.Nom);
+                        sw.WriteLine(String.Join(";", L));
+                    }
+                }
+            }
+        }
+
+        private String ValToString(double val)
         {
             val = Math.Round(val, Precision);
             if (val != 0)
-                return val.ToString() + ";" + Comb;
+                return val.ToString();
 
-            return ";";
+            return "";
+        }
+
+        private String ValToString(double val, int precision)
+        {
+            val = Math.Round(val, precision);
+            if (val != 0)
+                return val.ToString();
+
+            return "";
         }
 
         private class FichierPOR
@@ -237,13 +423,28 @@ namespace AnalyseRDM6
             {
                 try
                 {
+                    /*
+                    Structure du fichier :
+                    13
+                    TYPE BIBLIOTHEQUE
+                    NOM *UPE
+                    DESIGNATION *200
+                     */
                     var no = Int32.Parse(sr.ReadLine().Trim());
                     var s = new DATA.Section();
                     s.No = no;
+                    // On echappe le type de la section
                     sr.ReadLine();
+
+                    // On lit le nom
                     var r = sr.ReadLine().Split(new char[] { '*' }, StringSplitOptions.RemoveEmptyEntries);
                     if (r.Length == 2)
                         s.Nom = r[1].Trim();
+
+                    // On ajoute la description au nom
+                    r = sr.ReadLine().Split(new char[] { '*' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (r.Length == 2)
+                        s.Nom = s.Nom + " " + r[1].Trim();
 
                     _Data.ListeSections.Add(s.No, s);
                 }
@@ -409,77 +610,86 @@ namespace AnalyseRDM6
 
             private void PElement(StreamReader sr)
             {
-                var Poutre = _Data.ListePoutres[_Poutre];
-                var Efforts = new DATA.EffortsPoutre();
-                Efforts.Poutre = Poutre.No;
-                Efforts.Cas = _Cas.No;
+                if (_Data.ListePoutres.ContainsKey(_Poutre))
+                {
+                    var Poutre = _Data.ListePoutres[_Poutre];
+                    var Efforts = new DATA.EffortsPoutre();
+                    Efforts.Poutre = Poutre.No;
+                    Efforts.Cas = _Cas.No;
 
-                _Cas.ListeEffortsPoutre.Add(Efforts.Poutre, Efforts);
+                    _Cas.ListeEffortsPoutre.Add(Efforts.Poutre, Efforts);
 
-                // Efforts Noeud Origine
-                var l = sr.ReadLine();
-                var t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                var No = Efforts.EffortsNorigine;
-                No.Poutre = Poutre.No;
-                No.Noeud = Poutre.Origine;
-                No.Cas = _Cas.No;
-                No.N = -1 * Double.Parse(t[0]) * 0.1;
-                No.TY = Double.Parse(t[1]) * 0.1;
-                No.TZ = Double.Parse(t[2]) * 0.1;
-                No.MT = Double.Parse(t[3]) * 0.1;
-                No.MFY = Double.Parse(t[4]) * 0.1;
-                No.MFZ = Double.Parse(t[5]) * 0.1;
+                    // Efforts Noeud Origine
+                    var l = sr.ReadLine();
+                    var t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    var No = Efforts.EffortsNorigine;
+                    No.Poutre = Poutre.No;
+                    No.Noeud = Poutre.Origine;
+                    No.Cas = _Cas.No;
+                    No.N = -1 * Double.Parse(t[0]) * 0.1;
+                    No.TY = Double.Parse(t[1]) * 0.1;
+                    No.TZ = Double.Parse(t[2]) * 0.1;
+                    No.MT = Double.Parse(t[3]) * 0.1;
+                    No.MFY = Double.Parse(t[4]) * 0.1;
+                    No.MFZ = Double.Parse(t[5]) * 0.1;
 
-                // Efforts Noeud Extremite
-                l = sr.ReadLine();
-                t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                var Ne = Efforts.EffortsNextremite;
-                Ne.Poutre = Poutre.No;
-                Ne.Noeud = Poutre.Extremite;
-                Ne.Cas = _Cas.No;
-                Ne.N = Double.Parse(t[0]) * 0.1;
-                Ne.TY = Double.Parse(t[1]) * 0.1;
-                Ne.TZ = Double.Parse(t[2]) * 0.1;
-                Ne.MT = Double.Parse(t[3]) * 0.1;
-                Ne.MFY = Double.Parse(t[4]) * 0.1;
-                Ne.MFZ = Double.Parse(t[5]) * 0.1;
+                    // Efforts Noeud Extremite
+                    l = sr.ReadLine();
+                    t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    var Ne = Efforts.EffortsNextremite;
+                    Ne.Poutre = Poutre.No;
+                    Ne.Noeud = Poutre.Extremite;
+                    Ne.Cas = _Cas.No;
+                    Ne.N = Double.Parse(t[0]) * 0.1;
+                    Ne.TY = Double.Parse(t[1]) * 0.1;
+                    Ne.TZ = Double.Parse(t[2]) * 0.1;
+                    Ne.MT = Double.Parse(t[3]) * 0.1;
+                    Ne.MFY = Double.Parse(t[4]) * 0.1;
+                    Ne.MFZ = Double.Parse(t[5]) * 0.1;
 
-                // Efforts Maximum
-                l = sr.ReadLine();
-                t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                var M = Efforts.EffortsMax;
-                M.Poutre = Poutre.No;
-                M.Cas = _Cas.No;
-                M.Nc = Math.Min(0, Math.Min(Ne.N, No.N));
-                M.Nt = Math.Max(0, Math.Max(Ne.N, No.N));
-                M.TYmax = Double.Parse(t[0]) * 0.1;
-                M.TZmax = Double.Parse(t[1]) * 0.1;
-                M.MTmax = Math.Abs(No.MT);
-                M.MFYmax = Double.Parse(t[2]) * 0.1;
-                M.MFZmax = Double.Parse(t[3]) * 0.1;
+                    // Efforts Maximum
+                    l = sr.ReadLine();
+                    t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    var M = Efforts.EffortsMax;
+                    M.Poutre = Poutre.No;
+                    M.Cas = _Cas.No;
+                    M.Nc = Math.Min(0, Math.Min(Ne.N, No.N));
+                    M.Nt = Math.Max(0, Math.Max(Ne.N, No.N));
+                    M.TYmax = Double.Parse(t[0]) * 0.1;
+                    M.TZmax = Double.Parse(t[1]) * 0.1;
+                    M.MTmax = Math.Abs(No.MT);
+                    M.MFYmax = Double.Parse(t[2]) * 0.1;
+                    M.MFZmax = Double.Parse(t[3]) * 0.1;
 
-                _Poutre++;
+                    _Poutre++;
+                }
             }
 
             private int _Noeud = 1;
 
             private void PNoeud(StreamReader sr)
             {
-                var Noeud = _Data.ListeNoeuds[_Noeud];
-                var Dep = new DATA.DeplacementNoeud();
-                Dep.Noeud = Noeud.No;
-                Dep.Cas = _Cas.No;
+                if (_Data.ListeNoeuds.ContainsKey(_Noeud))
+                {
+                    var Noeud = _Data.ListeNoeuds[_Noeud];
+                    var Dep = new DATA.DeplacementNoeud();
+                    Dep.Noeud = Noeud.No;
+                    Dep.Cas = _Cas.No;
 
-                _Cas.ListeDeplacementNoeud.Add(Dep.Noeud, Dep);
+                    _Cas.ListeDeplacementNoeud.Add(Dep.Noeud, Dep);
 
-                // Déplacement Noeud
-                var l = sr.ReadLine();
-                var t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                Dep.X = Double.Parse(t[0]);
-                Dep.Y = Double.Parse(t[1]);
-                Dep.Z = Double.Parse(t[2]);
+                    // Déplacement Noeud
+                    var l = sr.ReadLine();
+                    var t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    Dep.DX = Double.Parse(t[0]);
+                    Dep.DY = Double.Parse(t[1]);
+                    Dep.DZ = Double.Parse(t[2]);
+                    Dep.RX = Double.Parse(t[3]);
+                    Dep.RY = Double.Parse(t[4]);
+                    Dep.RZ = Double.Parse(t[5]);
 
-                _Noeud++;
+                    _Noeud++;
+                }
             }
 
             private void PReaction(StreamReader sr)
@@ -490,15 +700,18 @@ namespace AnalyseRDM6
                 // Efforts Noeud Origine
                 var l = sr.ReadLine();
                 var t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                Reac.Noeud = Int32.Parse(t[0]);
-                Reac.X = Double.Parse(t[1]);
-                Reac.Y = Double.Parse(t[2]);
-                Reac.Z = Double.Parse(t[3]);
-                Reac.MFX = Double.Parse(t[4]) * 0.1;
-                Reac.MFY = Double.Parse(t[5]) * 0.1;
-                Reac.MFZ = Double.Parse(t[6]) * 0.1;
+                if (t.GetLength(0) == 7)
+                {
+                    Reac.Noeud = Int32.Parse(t[0]);
+                    Reac.FX = Double.Parse(t[1]) * 0.1;
+                    Reac.FY = Double.Parse(t[2]) * 0.1;
+                    Reac.FZ = Double.Parse(t[3]) * 0.1;
+                    Reac.MX = Double.Parse(t[4]) * 0.1;
+                    Reac.MY = Double.Parse(t[5]) * 0.1;
+                    Reac.MZ = Double.Parse(t[6]) * 0.1;
 
-                _Cas.ListeReactionNoeud.Add(Reac.Noeud, Reac);
+                    _Cas.ListeReactionNoeud.Add(Reac.Noeud, Reac);
+                }
             }
         }
 
@@ -635,7 +848,7 @@ namespace AnalyseRDM6
             public class Combinaison : CasDeCharge
             {
                 private List<Terme> _Lst = new List<Terme>();
-                public List<Terme> Liste { get { return _Lst; }}
+                public List<Terme> Liste { get { return _Lst; } }
             }
 
             public class Terme
@@ -646,17 +859,20 @@ namespace AnalyseRDM6
                     Cas = cas;
                     Facteur = facteur;
                 }
-                public int Cas { get; set;}
-                public double Facteur { get; set;}
+                public int Cas { get; set; }
+                public double Facteur { get; set; }
             }
 
             public class DeplacementNoeud
             {
                 public int Noeud { get; set; }
                 public int Cas { get; set; }
-                public double X { get; set; }
-                public double Y { get; set; }
-                public double Z { get; set; }
+                public double DX { get; set; }
+                public double DY { get; set; }
+                public double DZ { get; set; }
+                public double RX { get; set; }
+                public double RY { get; set; }
+                public double RZ { get; set; }
             }
 
             public class EffortsNoeud
@@ -676,12 +892,12 @@ namespace AnalyseRDM6
             {
                 public int Noeud { get; set; }
                 public int Cas { get; set; }
-                public double X { get; set; }
-                public double Y { get; set; }
-                public double Z { get; set; }
-                public double MFX { get; set; }
-                public double MFY { get; set; }
-                public double MFZ { get; set; }
+                public double FX { get; set; }
+                public double FY { get; set; }
+                public double FZ { get; set; }
+                public double MX { get; set; }
+                public double MY { get; set; }
+                public double MZ { get; set; }
             }
 
             public class EffortsMax

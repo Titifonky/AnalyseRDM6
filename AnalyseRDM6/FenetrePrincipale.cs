@@ -41,6 +41,7 @@ namespace AnalyseRDM6
             AnalyseRDM6.Data.Vider();
             AnalyseRDM6.Executer();
             Resultat.Text = "Terminé";
+
         }
     }
 }

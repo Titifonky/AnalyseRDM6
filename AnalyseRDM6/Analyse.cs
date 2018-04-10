@@ -38,69 +38,69 @@ namespace AnalyseRDM6
             // Create a file to write to.
             using (StreamWriter sw = File.CreateText(Path.Combine(dossier, "Analyse.csv")))
             {
-                sw.WriteLine("No;Origine;Extremite;Section;Lg;Nc;Nc comb;Nt;Nt comb;Ty;Ty comb;Tz;Tz comb;MFy;MFy comb;MFz;MFz comb;Mt;Mt comb");
+                sw.WriteLine("No;Origine;Extremite;Section;Lg;NcMax;NcMax comb;NtMax;NtMax comb;TyMax;TyMax comb;TzMax;TzMax comb;MFyMax;MFyMax comb;MFzMax;MFzMax comb;MtMax;MtMax comb");
 
                 foreach (var Poutre in Data.ListePoutres.Values)
                 {
                     String NcCombinaisonMax = "";
-                    double Nc = 0;
+                    double NcMax = 0;
                     String NtCombinaisonMax = "";
-                    double Nt = 0;
+                    double NtMax = 0;
                     String TyCombinaisonMax = "";
-                    double Ty = 0;
+                    double TyMax = 0;
                     String TzCombinaisonMax = "";
-                    double Tz = 0;
+                    double TzMax = 0;
                     String MFyCombinaisonMax = "";
-                    double MFy = 0;
+                    double MFyMax = 0;
                     String MFzCombinaisonMax = "";
-                    double MFz = 0;
+                    double MFzMax = 0;
                     String MtCombinaisonMax = "";
-                    double Mt = 0;
+                    double MtMax = 0;
 
 
                     foreach (var Comb in Data.ListeCombinaisons.Values)
                     {
                         var Efforts = Comb.ListeEffortsPoutre[Poutre.No];
 
-                        if(Efforts.EffortsMax.Nc < Nc)
+                        if(Efforts.EffortsMax.Nc < NcMax)
                         {
-                            Nc = Efforts.EffortsMax.Nc;
+                            NcMax = Efforts.EffortsMax.Nc;
                             NcCombinaisonMax = Comb.Nom;
                         }
 
-                        if (Efforts.EffortsMax.Nt > Nt)
+                        if (Efforts.EffortsMax.Nt > NtMax)
                         {
-                            Nt = Efforts.EffortsMax.Nt;
+                            NtMax = Efforts.EffortsMax.Nt;
                             NtCombinaisonMax = Comb.Nom;
                         }
 
-                        if (Efforts.EffortsMax.TYmax > Ty)
+                        if (Efforts.EffortsMax.TYmax > TyMax)
                         {
-                            Ty = Efforts.EffortsMax.TYmax;
+                            TyMax = Efforts.EffortsMax.TYmax;
                             TyCombinaisonMax = Comb.Nom;
                         }
 
-                        if (Efforts.EffortsMax.TZmax > Tz)
+                        if (Efforts.EffortsMax.TZmax > TzMax)
                         {
-                            Tz = Efforts.EffortsMax.TZmax;
+                            TzMax = Efforts.EffortsMax.TZmax;
                             TzCombinaisonMax = Comb.Nom;
                         }
 
-                        if (Efforts.EffortsMax.MFYmax > MFy)
+                        if (Efforts.EffortsMax.MFYmax > MFyMax)
                         {
-                            MFy = Efforts.EffortsMax.MFYmax;
+                            MFyMax = Efforts.EffortsMax.MFYmax;
                             MFyCombinaisonMax = Comb.Nom;
                         }
 
-                        if (Efforts.EffortsMax.MFZmax > MFz)
+                        if (Efforts.EffortsMax.MFZmax > MFzMax)
                         {
-                            MFz = Efforts.EffortsMax.MFZmax;
+                            MFzMax = Efforts.EffortsMax.MFZmax;
                             MFzCombinaisonMax = Comb.Nom;
                         }
 
-                        if (Efforts.EffortsMax.MTmax > Mt)
+                        if (Efforts.EffortsMax.MTmax > MtMax)
                         {
-                            Mt = Efforts.EffortsMax.MTmax;
+                            MtMax = Efforts.EffortsMax.MTmax;
                             MtCombinaisonMax = Comb.Nom;
                         }
 
@@ -115,25 +115,25 @@ namespace AnalyseRDM6
 
 
                     // Compression pure
-                    L.Add(ValToString(Nc, NcCombinaisonMax));
+                    L.Add(ValToString(NcMax, NcCombinaisonMax));
 
                     // Traction pure
-                    L.Add(ValToString(Nt, NtCombinaisonMax));
+                    L.Add(ValToString(NtMax, NtCombinaisonMax));
 
                     // Tranchant Y
-                    L.Add(ValToString(Ty, TyCombinaisonMax));
+                    L.Add(ValToString(TyMax, TyCombinaisonMax));
 
                     // Tranchant Z
-                    L.Add(ValToString(Tz, TzCombinaisonMax));
+                    L.Add(ValToString(TzMax, TzCombinaisonMax));
 
                     // Moment flechissant Y
-                    L.Add(ValToString(MFy, MFyCombinaisonMax));
+                    L.Add(ValToString(MFyMax, MFyCombinaisonMax));
 
                     // Moment flechissant Z
-                    L.Add(ValToString(MFz, MFzCombinaisonMax));
+                    L.Add(ValToString(MFzMax, MFzCombinaisonMax));
 
                     // Moment de torsion
-                    L.Add(ValToString(Mt, MtCombinaisonMax));
+                    L.Add(ValToString(MtMax, MtCombinaisonMax));
 
                     sw.WriteLine(String.Join(";", L));
                 }
@@ -390,7 +390,9 @@ namespace AnalyseRDM6
                 _Data = data;
 
                 _Fonctions = new Dictionary<string, Action<StreamReader>>();
+                _Fonctions.Add("noeuds", PNoeud);
                 _Fonctions.Add("elements", PElement);
+                _Fonctions.Add("reactions", PReaction);
             }
 
             public void Analyser()
@@ -457,6 +459,46 @@ namespace AnalyseRDM6
                 M.MFZmax = Double.Parse(t[3]) * 0.1;
 
                 _Poutre++;
+            }
+
+            private int _Noeud = 1;
+
+            private void PNoeud(StreamReader sr)
+            {
+                var Noeud = _Data.ListeNoeuds[_Noeud];
+                var Dep = new DATA.DeplacementNoeud();
+                Dep.Noeud = Noeud.No;
+                Dep.Cas = _Cas.No;
+
+                _Cas.ListeDeplacementNoeud.Add(Dep.Noeud, Dep);
+
+                // Déplacement Noeud
+                var l = sr.ReadLine();
+                var t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                Dep.X = Double.Parse(t[0]);
+                Dep.Y = Double.Parse(t[1]);
+                Dep.Z = Double.Parse(t[2]);
+
+                _Noeud++;
+            }
+
+            private void PReaction(StreamReader sr)
+            {
+                var Reac = new DATA.ReactionNoeud();
+                Reac.Cas = _Cas.No;
+
+                // Efforts Noeud Origine
+                var l = sr.ReadLine();
+                var t = l.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                Reac.Noeud = Int32.Parse(t[0]);
+                Reac.X = Double.Parse(t[1]);
+                Reac.Y = Double.Parse(t[2]);
+                Reac.Z = Double.Parse(t[3]);
+                Reac.MFX = Double.Parse(t[4]) * 0.1;
+                Reac.MFY = Double.Parse(t[5]) * 0.1;
+                Reac.MFZ = Double.Parse(t[6]) * 0.1;
+
+                _Cas.ListeReactionNoeud.Add(Reac.Noeud, Reac);
             }
         }
 
@@ -586,6 +628,8 @@ namespace AnalyseRDM6
                 }
                 public string Fichier { get; set; }
                 public Dictionary<int, EffortsPoutre> ListeEffortsPoutre = new Dictionary<int, EffortsPoutre>();
+                public Dictionary<int, DeplacementNoeud> ListeDeplacementNoeud = new Dictionary<int, DeplacementNoeud>();
+                public Dictionary<int, ReactionNoeud> ListeReactionNoeud = new Dictionary<int, ReactionNoeud>();
             }
 
             public class Combinaison : CasDeCharge
@@ -606,6 +650,15 @@ namespace AnalyseRDM6
                 public double Facteur { get; set;}
             }
 
+            public class DeplacementNoeud
+            {
+                public int Noeud { get; set; }
+                public int Cas { get; set; }
+                public double X { get; set; }
+                public double Y { get; set; }
+                public double Z { get; set; }
+            }
+
             public class EffortsNoeud
             {
                 public int Poutre { get; set; }
@@ -615,6 +668,18 @@ namespace AnalyseRDM6
                 public double TY { get; set; }
                 public double TZ { get; set; }
                 public double MT { get; set; }
+                public double MFY { get; set; }
+                public double MFZ { get; set; }
+            }
+
+            public class ReactionNoeud
+            {
+                public int Noeud { get; set; }
+                public int Cas { get; set; }
+                public double X { get; set; }
+                public double Y { get; set; }
+                public double Z { get; set; }
+                public double MFX { get; set; }
                 public double MFY { get; set; }
                 public double MFZ { get; set; }
             }

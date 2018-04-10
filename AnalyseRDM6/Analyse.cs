@@ -8,6 +8,7 @@ namespace AnalyseRDM6
     {
         public String CheminFichierPOR { get; set; }
         public DATA Data = new DATA();
+        public int Precision = 0;
 
         public void Executer()
         {
@@ -37,16 +38,30 @@ namespace AnalyseRDM6
             // Create a file to write to.
             using (StreamWriter sw = File.CreateText(Path.Combine(dossier, "Analyse.csv")))
             {
-                foreach(var Poutre in Data.ListePoutres.Values)
+                sw.WriteLine("No;Origine;Extremite;Section;Lg;Nc;Nc comb;Nt;Nt comb;Ty;Ty comb;Tz;Tz comb;MFy;MFy comb;MFz;MFz comb;Mt;Mt comb");
+
+                foreach (var Poutre in Data.ListePoutres.Values)
                 {
                     String NcCombinaisonMax = "";
                     double Nc = 0;
                     String NtCombinaisonMax = "";
                     double Nt = 0;
+                    String TyCombinaisonMax = "";
+                    double Ty = 0;
+                    String TzCombinaisonMax = "";
+                    double Tz = 0;
+                    String MFyCombinaisonMax = "";
+                    double MFy = 0;
+                    String MFzCombinaisonMax = "";
+                    double MFz = 0;
+                    String MtCombinaisonMax = "";
+                    double Mt = 0;
+
 
                     foreach (var Comb in Data.ListeCombinaisons.Values)
                     {
                         var Efforts = Comb.ListeEffortsPoutre[Poutre.No];
+
                         if(Efforts.EffortsMax.Nc < Nc)
                         {
                             Nc = Efforts.EffortsMax.Nc;
@@ -58,6 +73,37 @@ namespace AnalyseRDM6
                             Nt = Efforts.EffortsMax.Nt;
                             NtCombinaisonMax = Comb.Nom;
                         }
+
+                        if (Efforts.EffortsMax.TYmax > Ty)
+                        {
+                            Ty = Efforts.EffortsMax.TYmax;
+                            TyCombinaisonMax = Comb.Nom;
+                        }
+
+                        if (Efforts.EffortsMax.TZmax > Tz)
+                        {
+                            Tz = Efforts.EffortsMax.TZmax;
+                            TzCombinaisonMax = Comb.Nom;
+                        }
+
+                        if (Efforts.EffortsMax.MFYmax > MFy)
+                        {
+                            MFy = Efforts.EffortsMax.MFYmax;
+                            MFyCombinaisonMax = Comb.Nom;
+                        }
+
+                        if (Efforts.EffortsMax.MFZmax > MFz)
+                        {
+                            MFz = Efforts.EffortsMax.MFZmax;
+                            MFzCombinaisonMax = Comb.Nom;
+                        }
+
+                        if (Efforts.EffortsMax.MTmax > Mt)
+                        {
+                            Mt = Efforts.EffortsMax.MTmax;
+                            MtCombinaisonMax = Comb.Nom;
+                        }
+
                     }
 
                     var L = new List<String>();
@@ -67,23 +113,40 @@ namespace AnalyseRDM6
                     L.Add(Data.ListeSections[Poutre.Section].Nom);
                     L.Add(Math.Round(Poutre.Longueur, 3).ToString());
 
-                    if (Nc != 0)
-                        L.Add(Math.Round(Nc, 1).ToString());
-                    else
-                        L.Add("");
 
-                    L.Add(NcCombinaisonMax);
+                    // Compression pure
+                    L.Add(ValToString(Nc, NcCombinaisonMax));
 
-                    if (Nt != 0)
-                        L.Add(Math.Round(Nt, 1).ToString());
-                    else
-                        L.Add("");
-                    
-                    L.Add(NtCombinaisonMax);
+                    // Traction pure
+                    L.Add(ValToString(Nt, NtCombinaisonMax));
+
+                    // Tranchant Y
+                    L.Add(ValToString(Ty, TyCombinaisonMax));
+
+                    // Tranchant Z
+                    L.Add(ValToString(Tz, TzCombinaisonMax));
+
+                    // Moment flechissant Y
+                    L.Add(ValToString(MFy, MFyCombinaisonMax));
+
+                    // Moment flechissant Z
+                    L.Add(ValToString(MFz, MFzCombinaisonMax));
+
+                    // Moment de torsion
+                    L.Add(ValToString(Mt, MtCombinaisonMax));
 
                     sw.WriteLine(String.Join(";", L));
                 }
             }
+        }
+
+        private String ValToString(double val, String Comb)
+        {
+            val = Math.Round(val, Precision);
+            if (val != 0)
+                return val.ToString() + ";" + Comb;
+
+            return ";";
         }
 
         private class FichierPOR
